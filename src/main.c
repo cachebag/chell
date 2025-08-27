@@ -1,10 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #define CSH_RL_BUFSIZE 1024
 #define CSH_TOK_BUFSIZE 64
 #define CSH_TOK_DELIM " \t\r\n\a"
+
+/* 
+  Chell commands 
+*/ 
+int csh_cd(char **args);
+int csh_help(char **args);
+int csh_exit(char **args);
 
 int main(int argc, char **argv) {
   // config files 
@@ -96,4 +104,28 @@ char **csh_spit_line(char *line) {
   }
   tokens[position] = NULL;
   return tokens;
+}
+
+int csh_launch(char **args) {
+  pid_t pid, wpid;
+  int status;
+
+  pid = fork();
+  if (pid == 0) {
+    // child 
+    if (execvp(args[0], args) == -1) {
+      perror("csh");
+    }
+    exit(EXIT_FAILURE);
+  } else if (pid < 0) {
+    // forking error 
+    perror("csh");
+  } else {
+    // parent 
+    do {
+      wpid = waitpid(pid, &status, WUNTRACED);
+    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+  }
+
+  return 1;
 }
