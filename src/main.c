@@ -1,3 +1,5 @@
+#include <sys/wait.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,34 +16,57 @@ int csh_cd(char **args);
 int csh_help(char **args);
 int csh_exit(char **args);
 
-int main(int argc, char **argv) {
-  // config files 
-  
-  csh_loop();
+/* 
+  list of built-in commands and their functions 
+*/ 
+char *builtin_str[] = {
+  "cd", 
+  "help",
+  "exit"
+};
 
-  // shutdown or cleanup
+int (*builtin_func[]) (char **) = {
+  &csh_cd,
+  &csh_help,
+  &csh_exit,
+};
 
-  return EXIT_SUCCESS;
+int csh_num_builtins() {
+  return sizeof(builtin_str) / sizeof(char *);
 }
 
-void csh_loop(void) {
-  char *line;
-  char **args;
-  int status;
+/* 
+  Command implementations
+*/ 
+int csh_cd(char **args) {
+  if (args[1] == NULL) {
+    fprintf(stderr, "csh: expected argument to \"cd\"\n");
+  } else {
+    if (chdir(args[1]) != 0) {
+      perror("csh");
+    }
+  }
+  return 1;
+}
 
-  do {
-    printf("> ");
-    line = csh_read_line();
-    args = csh_spit_line(line);
-    status = csh_execute(args);
+int csh_help(char **args) {
+  int i;
+  printf("chell by cachebag");
+  printf("List of supported commands:\n");
 
-    free(line);
-    free(args);
-  } while (status);
+  for (i = 0; i < csh_num_builtins(); i++) {
+    printf("  %s\n", builtin_str[i]);
+  }
+
+  return 1;
+}
+
+int csh_exit(char **args) {
+  return 0;
 }
 
 char *csh_read_line(void) {
-  int bufsize = cSH_RL_BUFSIZE;
+  int bufsize = CSH_RL_BUFSIZE;
   int position = 0;
   char *buffer = malloc(sizeof(char) * bufsize);
   int c;
@@ -76,7 +101,7 @@ char *csh_read_line(void) {
   }
 }
 
-char **csh_spit_line(char *line) {
+char **csh_split_line(char *line) {
   int bufsize = CSH_TOK_BUFSIZE, position = 0;
   char **tokens = malloc(bufsize * sizeof(char*));
   char *token;
@@ -128,4 +153,46 @@ int csh_launch(char **args) {
   }
 
   return 1;
+}
+
+int csh_execute(char **args) {
+  int i;
+
+  if (args[0] == NULL) {
+    return 1;
+  }
+
+  for (i = 0; i < csh_num_builtins(); i++) {
+    if (strcmp(args[0], builtin_str[i]) == 0) {
+      return (*builtin_func[i])(args);
+    }
+  }
+
+  return csh_launch(args);
+}
+
+void csh_loop(void) {
+  char *line;
+  char **args;
+  int status;
+
+  do {
+    printf("> ");
+    line = csh_read_line();
+    args = csh_split_line(line);
+    status = csh_execute(args);
+
+    free(line);
+    free(args);
+  } while (status);
+}
+
+int main(int argc, char **argv) {
+  // config files 
+  
+  csh_loop();
+
+  // shutdown or cleanup
+
+  return EXIT_SUCCESS;
 }
