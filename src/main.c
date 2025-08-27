@@ -51,11 +51,11 @@ int csh_cd(char **args) {
 
 int csh_help(char **args) {
   int i;
-  printf("chell by cachebag");
+  printf("chell by cachebag\n");
   printf("List of supported commands:\n");
 
   for (i = 0; i < csh_num_builtins(); i++) {
-    printf("  %s\n", builtin_str[i]);
+    printf("  -> %s\n", builtin_str[i]);
   }
 
   return 1;
